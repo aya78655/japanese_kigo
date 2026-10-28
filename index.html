@@ -30,6 +30,13 @@
   .mode-btn{flex:1;font:inherit;font-size:.9rem;padding:10px 8px;border-radius:10px;border:1px solid var(--border);
     background:var(--card);color:var(--sub);cursor:pointer;}
   .mode-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;}
+  .groups .mode-btn small{font-size:.75rem;opacity:.8;margin-left:2px;}
+  .groups .mode-btn.active{background:var(--ink);border-color:var(--ink);}
+  .sets{display:flex;gap:6px;flex-wrap:wrap;margin:-6px 0 16px;}
+  .set-btn{flex:1 1 0;min-width:84px;font:inherit;font-size:.88rem;padding:6px 8px;border-radius:10px;border:1px solid var(--border);
+    background:var(--card);color:var(--ink);cursor:pointer;line-height:1.3;}
+  .set-btn small{display:block;font-size:.7rem;color:var(--sub);}
+  .set-btn.active{border:2px solid var(--accent);background:var(--accent-soft);font-weight:700;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 22px 20px;}
   .q-body{display:flex;gap:18px;align-items:flex-start;}
   .q-image-wrap{flex:0 0 220px;width:220px;height:150px;border-radius:12px;overflow:hidden;background:var(--accent-soft);
@@ -71,8 +78,9 @@
   footer{text-align:center;color:var(--sub);font-size:.8rem;margin-top:20px;}
   @media (max-width:560px){
     .q-body{flex-direction:column;}
+    .q-main{width:100%;}
     .q-image-wrap{width:100%;flex:none;height:120px;}
-    .modes{flex-direction:column;}
+    .modes:not(.groups){flex-direction:column;}
   }
 </style>
 </head>
@@ -93,6 +101,8 @@
     <button class="mode-btn active" data-mode="w2s">季語 → 季節を選ぶ</button>
     <button class="mode-btn" data-mode="s2w">季節 → 季語を選ぶ</button>
   </div>
+  <div class="modes groups" id="groups"></div>
+  <div class="sets" id="sets"></div>
   <div class="card" id="qcard">
     <div class="q-body">
       <div class="q-image-wrap" id="img"></div>
@@ -193,9 +203,19 @@ const NOTE={
 
 const ALL=[];
 for(const s of ["春","夏","秋","冬"]){
-  RAW[s].photo.forEach(([w,r,e])=>ALL.push({w,r,e,s}));
-  RAW[s].other.forEach(([w,r,e])=>ALL.push({w,r,e,s}));
+  RAW[s].photo.forEach(([w,r,e])=>ALL.push({w,r,e,s,often:true}));
+  RAW[s].other.forEach(([w,r,e])=>ALL.push({w,r,e,s,often:false}));
 }
+// 季節がかたよらないように春→夏→秋→冬の順にまぜて、30問ずつの回に分ける
+function makeSets(often){
+  const by=["春","夏","秋","冬"].map(s=>ALL.filter(k=>k.s===s&&k.often===often));
+  const mixed=[];for(let i=0;by.some(a=>i<a.length);i++) by.forEach(a=>{if(i<a.length)mixed.push(a[i]);});
+  const sets=[];for(let i=0;i<mixed.length;i+=30) sets.push(mixed.slice(i,i+30));
+  if(sets.length>1&&sets[sets.length-1].length<15){const last=sets.pop();sets[sets.length-1]=sets[sets.length-1].concat(last);}
+  return sets;
+}
+const GROUPS=[{key:"often",label:"よく出る",sets:makeSets(true)},{key:"normal",label:"出る",sets:makeSets(false)}];
+let gi=0, si=0;
 const SEASONS=["春","夏","秋","冬"], LET=["A","B","C","D"];
 const $=id=>document.getElementById(id);
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
@@ -205,8 +225,17 @@ let mode="w2s", qs=[], idx=0, score=0, misses=[];
 
 document.querySelectorAll(".mode-btn").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".mode-btn").forEach(x=>x.classList.toggle("active",x===b));
-  mode=b.dataset.mode; start(ALL);
+  mode=b.dataset.mode; start(curSet());
 });
+const curSet=()=>GROUPS[gi].sets[si];
+function drawSets(){
+  $("groups").innerHTML=GROUPS.map((g,i)=>{const n=g.sets.reduce((a,x)=>a+x.length,0);
+    return `<button class="mode-btn${i===gi?" active":""}" data-g="${i}">${g.label}<small>（${n}語）</small></button>`;}).join("");
+  let from=1;
+  $("sets").innerHTML=GROUPS[gi].sets.map((x,i)=>{const t=`<button class="set-btn${i===si?" active":""}" data-s="${i}">第${i+1}回<small>${from}〜${from+x.length-1}</small></button>`;from+=x.length;return t;}).join("");
+  $("groups").querySelectorAll("button").forEach(b=>b.onclick=()=>{gi=+b.dataset.g;si=0;drawSets();start(curSet());});
+  $("sets").querySelectorAll("button").forEach(b=>b.onclick=()=>{si=+b.dataset.s;drawSets();start(curSet());});
+}
 
 function start(list){
   qs=shuffle(list).map(k=>{
@@ -217,7 +246,7 @@ function start(list){
   });
   idx=0;score=0;misses=[];
   $("qcard").classList.remove("hide");$("result").classList.add("hide");
-  $("foot").textContent=`全${qs.length}問・季語の季節クイズ`;
+  $("foot").textContent=`${GROUPS[gi].label} 第${si+1}回・全${qs.length}問・季語の季節クイズ`;
   render();
 }
 
@@ -274,9 +303,9 @@ function finish(){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 $("retryMiss").onclick=()=>start(misses.slice());
-$("restart").onclick=()=>start(ALL);
+$("restart").onclick=()=>start(curSet());
 
-start(ALL);
+drawSets();start(curSet());
 </script>
 </body>
 </html>
