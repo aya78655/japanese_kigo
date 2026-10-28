@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>季語クイズ</title>
+<style>
+  :root{
+    --bg:#f7f5f0; --card:#ffffff; --ink:#2d2a26; --sub:#6b6560;
+    --accent:#3a6b5c; --accent-soft:#e7efec;
+    --correct:#3a7d3a; --correct-bg:#e6f4e6;
+    --wrong:#b3452e; --wrong-bg:#fbe9e5;
+    --border:#e3ddd2;
+    --haru:#c9577a; --natsu:#2f6fa3; --aki:#b85c1e; --fuyu:#5a6c86;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,system-ui,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.7;padding-bottom:60px;min-height:100vh;}
+  .progress-wrap{position:sticky;top:0;z-index:10;background:rgba(247,245,240,0.92);backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--border);padding:12px 16px;}
+  .progress-inner{max-width:720px;margin:0 auto;display:flex;align-items:center;gap:12px;font-size:.85rem;color:var(--sub);}
+  .progress-bar-track{flex:1;height:6px;background:var(--accent-soft);border-radius:999px;overflow:hidden;}
+  .progress-bar-fill{height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .25s ease;}
+  .progress-inner strong{color:var(--accent);white-space:nowrap;}
+  header{text-align:center;padding:36px 16px 12px;}
+  header h1{margin:0 0 8px;font-size:1.6rem;}
+  header p{margin:0;color:var(--sub);font-size:.95rem;}
+  main{max-width:720px;margin:0 auto;padding:24px 16px 0;}
+  .modes{display:flex;gap:8px;margin-bottom:16px;}
+  .mode-btn{flex:1;font:inherit;font-size:.9rem;padding:10px 8px;border-radius:10px;border:1px solid var(--border);
+    background:var(--card);color:var(--sub);cursor:pointer;}
+  .mode-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 22px 20px;}
+  .q-body{display:flex;gap:18px;align-items:flex-start;}
+  .q-image-wrap{flex:0 0 220px;width:220px;height:150px;border-radius:12px;overflow:hidden;background:var(--accent-soft);
+    border:1px solid var(--border);display:grid;place-items:center;}
+  .q-emoji{font-size:4.2rem;line-height:1;}
+  .q-emoji.hidden{font-size:3rem;color:var(--sub);font-weight:700;opacity:.5;}
+  .q-season{font-size:4.6rem;font-weight:800;line-height:1;}
+  .q-main{flex:1;min-width:0;}
+  .q-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .q-num{font-size:.75rem;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:2px 8px;}
+  .q-text{font-size:1.3rem;font-weight:700;}
+  .q-reading{font-size:.85rem;color:var(--sub);}
+  .choices{display:flex;flex-direction:column;gap:8px;}
+  .choice{display:flex;gap:8px;text-align:left;font:inherit;font-size:.98rem;color:var(--ink);background:var(--card);
+    border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;line-height:1.6;}
+  .choice:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft);}
+  .choice b{color:var(--accent);}
+  .choice .rd{color:var(--sub);font-size:.82rem;}
+  .choice.correct{border-color:var(--correct);background:var(--correct-bg);color:var(--correct);}
+  .choice.wrong{border-color:var(--wrong);background:var(--wrong-bg);color:var(--wrong);}
+  .choice:disabled{cursor:default;}
+  .feedback{margin-top:14px;font-weight:700;}
+  .feedback.ok{color:var(--correct);} .feedback.ng{color:var(--wrong);}
+  .explain{margin-top:6px;font-size:.9rem;color:var(--ink);background:var(--bg);border-radius:10px;padding:10px 12px;font-weight:400;}
+  .explain .s{font-weight:700;}
+  .next-row{display:flex;justify-content:flex-end;margin-top:12px;}
+  .next-btn{font:inherit;font-size:.92rem;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:999px;
+    padding:9px 22px;cursor:pointer;}
+  .next-btn.sub{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+  .hide{display:none!important;}
+  .result{text-align:center;}
+  .result .big{font-size:2.6rem;font-weight:800;color:var(--accent);}
+  .result .msg{color:var(--sub);margin-bottom:14px;}
+  .miss{list-style:none;padding:0;margin:0 0 16px;text-align:left;}
+  .miss li{border-top:1px solid var(--border);padding:8px 4px;font-size:.92rem;}
+  .miss .note{display:block;color:var(--sub);font-size:.82rem;}
+  .result .btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+  .s-春{color:var(--haru);} .s-夏{color:var(--natsu);} .s-秋{color:var(--aki);} .s-冬{color:var(--fuyu);}
+  footer{text-align:center;color:var(--sub);font-size:.8rem;margin-top:20px;}
+  @media (max-width:560px){
+    .q-body{flex-direction:column;}
+    .q-image-wrap{width:100%;flex:none;height:120px;}
+    .modes{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+<div class="progress-wrap">
+  <div class="progress-inner">
+    <span id="pos">1問目 / 0問中</span>
+    <div class="progress-bar-track"><div class="progress-bar-fill" id="bar"></div></div>
+    <strong id="score">正解 0</strong>
+  </div>
+</div>
+<header>
+  <h1>季語クイズ</h1>
+  <p>正しい季節を選んでください。1問ずつ答え合わせをしながら進みます。</p>
+</header>
+<main>
+  <div class="modes">
+    <button class="mode-btn active" data-mode="w2s">季語 → 季節を選ぶ</button>
+    <button class="mode-btn" data-mode="s2w">季節 → 季語を選ぶ</button>
+  </div>
+  <div class="card" id="qcard">
+    <div class="q-body">
+      <div class="q-image-wrap" id="img"></div>
+      <div class="q-main">
+        <div class="q-head"><span class="q-num" id="qnum"></span><span class="q-text" id="qtext"></span><span class="q-reading" id="qread"></span></div>
+        <div class="choices" id="choices"></div>
+        <div id="fb"></div>
+        <div class="next-row"><button class="next-btn hide" id="next">次の問題へ</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="card result hide" id="result">
+    <div class="big" id="rscore"></div>
+    <div class="msg" id="rmsg"></div>
+    <ul class="miss" id="miss"></ul>
+    <div class="btns">
+      <button class="next-btn" id="retryMiss">まちがえた問題をもう一度</button>
+      <button class="next-btn sub" id="restart">最初からやり直す</button>
+    </div>
+  </div>
+  <footer id="foot"></footer>
+</main>
+<script>
+const RAW={
+"春":{photo:[["残雪","ざんせつ","🏔️"],["茶摘み","ちゃつみ","🍵"],["蝶","ちょう","🦋"],["土筆","つくし","🌱"],["花曇り","はなぐもり","🌥️"],["菜の花","なのはな","🌼"],["桜","さくら","🌸"],["燕","つばめ","🐦"],["梅","うめ","🌺"],["鶯","うぐいす","🐤"],["すみれ","","🪻"],["雲雀","ひばり","🕊️"],["おぼろ月","おぼろづき","🌙"],["畑打ち","はたうち","🧑‍🌾"]],
+ other:[["余寒","よかん","🥶"],["日永","ひなが","☀️"],["八十八夜","はちじゅうはちや","📅"],["霞","かすみ","🌫️"],["陽炎","かげろう","🔆"],["雛祭り","ひなまつり","🎎"],["花祭り","はなまつり","🪷"],["よもぎ餅","よもぎもち","🍡"],["若鮎","わかあゆ","🐟"],["蛙","かえる","🐸"],["雀の子","すずめのこ","🐣"],["山吹","やまぶき","🌼"],["椿","つばき","🌺"],["藤","ふじ","💜"],["つつじ","","🌸"],["たんぽぽ","","🌼"],["若草","わかくさ","🌿"],["なずな","","🌱"],["はこべ","","🍀"]]},
+"夏":{photo:[["入道雲","にゅうどうぐも","☁️"],["向日葵","ひまわり","🌻"],["紫陽花","あじさい","💠"],["入梅","にゅうばい","☔"],["五月雨","さみだれ","🌧️"],["梅雨","つゆ","☂️"],["かっこう","","🐦"],["時鳥","ほととぎす","🐦"],["端午","たんご","🧒"],["吹き流し","ふきながし","🌬️"],["こいのぼり","","🎏"],["蚊帳","かや","🛏️"],["麦の秋","むぎのあき","🌾"]],
+ other:[["短夜","みじかよ","🌃"],["土用","どよう","🔥"],["風薫る","かぜかおる","🍃"],["夕立","ゆうだち","⛈️"],["雷","かみなり","⚡"],["母の日","ははのひ","💐"],["更衣","ころもがえ","👕"],["団扇","うちわ","🪭"],["虫干し","むしぼし","📚"],["田植え","たうえ","🌱"],["風鈴","ふうりん","🎐"],["鰹","かつお","🐟"],["鮎","あゆ","🐟"],["鰻","うなぎ","🍱"],["蝉","せみ","🪲"],["金魚","きんぎょ","🐠"],["蚊","か","🦟"],["蛍","ほたる","✨"],["蝿","はえ","🪰"],["かぶと虫","かぶとむし","🪲"],["こがね虫","こがねむし","🐞"],["雨蛙","あまがえる","🐸"],["かたつむり","","🐌"],["若葉","わかば","🌿"],["牡丹","ぼたん","🌺"],["薔薇","ばら","🌹"],["あやめ","","🪻"],["たけのこ","","🎋"]]},
+"秋":{photo:[["柿","かき","🍊"],["鰯雲","いわしぐも","☁️"],["月","つき","🌕"],["薄","すすき","🌾"],["名月","めいげつ","🎑"],["朝顔","あさがお","🌺"],["天の川","あまのがわ","🌌"],["萩","はぎ","🌸"],["七夕","たなばた","🎋"],["啄木鳥","きつつき","🪵"],["とんぼ","","🪽"]],
+ other:[["残暑","ざんしょ","🥵"],["仲秋","ちゅうしゅう","🌕"],["二百十日","にひゃくとおか","🌀"],["夜長","よなが","🌙"],["夜寒","よさむ","🧣"],["台風","たいふう","🌀"],["野分","のわき","💨"],["天高し","てんたかし","🌤️"],["霧","きり","🌫️"],["露","つゆ","💧"],["盆","ぼん","🏮"],["稲刈り","いねかり","🌾"],["さんま","","🐟"],["虫","むし","🦗"],["松虫","まつむし","🦗"],["鈴虫","すずむし","🔔"],["こおろぎ","","🦗"],["ばった","","🦗"],["馬肥ゆる","うまこゆる","🐎"],["渡り鳥","わたりどり","🕊️"],["雁","かり","🪿"],["葛","くず","🍃"],["曼珠沙華","まんじゅしゃげ","🌺"],["紅葉","もみじ","🍁"],["桐一葉","きりひとは","🍂"],["林檎","りんご","🍎"],["梨","なし","🍐"],["ぶどう","","🍇"],["木の実","このみ","🌰"],["銀杏散る","いちょうちる","💛"]]},
+"冬":{photo:[["雪","ゆき","❄️"],["山茶花","さざんか","🌺"],["白鳥","はくちょう","🦢"],["鴨","かも","🦆"],["枯れ野","かれの","🌾"],["北風","きたかぜ","🌬️"],["木枯らし","こがらし","🍂"],["こたつ","","🍊"],["霜","しも","🧊"],["白菜","はくさい","🥬"],["除夜","じょや","🔔"],["蜜柑","みかん","🍊"],["お歳暮","おせいぼ","🎁"]],
+ other:[["小春日","こはるび","🌤️"],["短日","たんじつ","🌇"],["師走","しわす","🏃"],["大寒","だいかん","🥶"],["時雨","しぐれ","🌦️"],["霜柱","しもばしら","🧊"],["炭","すみ","⚫"],["焚き火","たきび","🔥"],["雪見","ゆきみ","⛄"],["網代","あじろ","🎣"],["ぶり","","🐟"],["ふぐ","","🐡"],["千鳥","ちどり","🐦"],["枯れ木","かれき","🌳"],["水仙","すいせん","🌼"],["大根","だいこん","🥕"],["葱","ねぎ","🥬"]]}
+};
+
+// まちがえやすい季語の解説（trick:true はひっかけモードに出る）
+const NOTE={
+"七夕":["昔のこよみ（旧暦）の7月7日は今の8月ごろ。立秋をすぎるので秋の季語。",1],
+"朝顔":["夏に咲き始めるが、立秋のころにさかりをむかえるので秋の季語。",1],
+"天の川":["秋の夜空にいちばんくっきり見えるので秋の季語。",1],
+"盆":["旧暦7月15日の行事で、立秋のあと。だから秋の季語。",1],
+"名月":["旧暦8月15日（十五夜）の月。秋の季語。",1],
+"月":["ただ「月」といえば、空がすんで美しい秋の月のこと。",1],
+"麦の秋":["麦が実って取り入れる初夏（5〜6月）のこと。「秋」とつくが夏の季語。",1],
+"残雪":["春になってもとけずに残っている雪。だから春の季語。",1],
+"余寒":["立春をすぎても残る寒さ。春の季語。",1],
+"小春日":["「小春」は旧暦10月（今の11月ごろ）のこと。春のような暖かい日だが冬の季語。",1],
+"五月雨":["旧暦5月（今の6月ごろ）にふる梅雨の雨。夏の季語。",1],
+"端午":["5月5日。立夏（5月6日ごろ）のころなので夏の季語。",1],
+"こいのぼり":["端午の節句にかざるので夏の季語。",0],
+"母の日":["5月の第2日曜日。立夏をすぎているので夏の季語。",1],
+"八十八夜":["立春から数えて88日目（5月2日ごろ）。立夏の前なので春の季語。",1],
+"二百十日":["立春から数えて210日目（9月1日ごろ）。台風が来やすい日で秋の季語。",1],
+"花祭り":["4月8日、お釈迦さまの誕生日を祝う行事。春の季語。",1],
+"蛙":["冬眠からさめて鳴き出す春の季語。「雨蛙」は夏。",1],
+"雨蛙":["ただの「蛙」は春だが、「雨蛙」は夏の季語。",1],
+"若鮎":["春に川をのぼる小さな鮎。春の季語。ただの「鮎」は夏。",1],
+"鮎":["鮎つりが始まる夏の季語。「若鮎」は春。",1],
+"若草":["春に芽を出したばかりの草。春の季語。",1],
+"若葉":["初夏の木々の若い葉。夏の季語。「若草」は春。",1],
+"霞":["春にたちこめるもや。春の季語。「霧」は秋。",1],
+"霧":["秋の季語。春の同じようなものは「霞」。",1],
+"露":["秋の朝、草の葉におりる水のつぶ。秋の季語。",1],
+"梅雨":["6月ごろの長雨。夏の季語。読みが同じ「露（つゆ）」は秋。",1],
+"時雨":["秋の終わりから冬にさっとふる雨。冬の季語。",1],
+"虫":["ただ「虫」といえば、秋に鳴く虫（鈴虫など）のこと。",1],
+"雷":["夏の夕立とともに鳴ることが多いので夏の季語。",0],
+"金魚":["夏に金魚売りが来たことから夏の季語。",0],
+"柿":["秋に実る。秋の季語。",0],
+"蜜柑":["冬に食べるくだもの。冬の季語。",1],
+"大根":["冬においしくなる野菜。冬の季語。",1],
+"白菜":["冬においしくなる野菜。冬の季語。",0],
+"蚊帳":["夏に蚊をふせぐためにつるもの。夏の季語。",0],
+"更衣":["6月1日に夏服にかえること。夏の季語。",1],
+"師走":["12月のこと。冬の季語。",0],
+"雀の子":["春に生まれたひなのこと。春の季語。",1],
+"啄木鳥":["秋の林で木をつつく音がよく聞こえるので秋の季語。",1],
+"桐一葉":["秋の始まりに桐の大きな葉が一枚落ちるようす。秋の季語。",1],
+"網代":["冬に川で魚（ひお）をとるしかけ。冬の季語。",1],
+"畑打ち":["春、種まきの前に畑をたがやすこと。春の季語。",1],
+"田植え":["初夏（6月ごろ）の農作業。夏の季語。「稲刈り」は秋。",1],
+"土用":["立秋の前の約18日間。夏の季語。",1],
+"仲秋":["旧暦8月のこと。秋の季語。",0],
+"渡り鳥":["秋に北から渡ってくる鳥。秋の季語。",0],
+"とんぼ":["秋の季語。赤とんぼなど秋に多く見られる。",1],
+"鰹":["初夏の「初鰹」から夏の季語。",1],
+"短夜":["夏は夜が短いので夏の季語。「夜長」は秋、「日永」は春、「短日」は冬。",1],
+"夜長":["秋は夜が長く感じられるので秋の季語。",1],
+"日永":["春は昼が長く感じられるので春の季語。",1],
+"短日":["冬は昼が短いので冬の季語。",1],
+"かっこう":["初夏にやってきて鳴く鳥。夏の季語。",0],
+"時鳥":["初夏に鳴く鳥。夏の季語。",0],
+"蝶":["春の季語。",0],
+"お歳暮":["年の暮れのおくりもの。冬の季語。",0],
+"除夜":["大みそかの夜。冬の季語。",0],
+"陽炎":["春の暖かい日に地面からゆらゆら立ちのぼるもの。春の季語。",1]
+};
+
+
+const ALL=[];
+for(const s of ["春","夏","秋","冬"]){
+  RAW[s].photo.forEach(([w,r,e])=>ALL.push({w,r,e,s}));
+  RAW[s].other.forEach(([w,r,e])=>ALL.push({w,r,e,s}));
+}
+const SEASONS=["春","夏","秋","冬"], LET=["A","B","C","D"];
+const $=id=>document.getElementById(id);
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const note=w=>NOTE[w]?NOTE[w][0]:"";
+
+let mode="w2s", qs=[], idx=0, score=0, misses=[];
+
+document.querySelectorAll(".mode-btn").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".mode-btn").forEach(x=>x.classList.toggle("active",x===b));
+  mode=b.dataset.mode; start(ALL);
+});
+
+function start(list){
+  qs=shuffle(list).map(k=>{
+    if(mode==="w2s") return {k,opts:SEASONS.map(s=>({label:s,ok:s===k.s}))};
+    // 季節→季語：ほかの3つの季節から1語ずつ
+    const others=SEASONS.filter(s=>s!==k.s).map(s=>shuffle(ALL.filter(x=>x.s===s))[0]);
+    return {k,opts:shuffle([k,...others]).map(x=>({item:x,ok:x===k}))};
+  });
+  idx=0;score=0;misses=[];
+  $("qcard").classList.remove("hide");$("result").classList.add("hide");
+  $("foot").textContent=`全${qs.length}問・季語の季節クイズ`;
+  render();
+}
+
+function render(){
+  const q=qs[idx],k=q.k;
+  $("pos").textContent=`${idx+1}問目 / ${qs.length}問中`;
+  $("score").textContent=`正解 ${score}`;
+  $("bar").style.width=`${idx/qs.length*100}%`;
+  $("qnum").textContent=`第${idx+1}問`;
+  $("fb").innerHTML="";$("next").classList.add("hide");
+  if(mode==="w2s"){
+    $("img").innerHTML=`<span class="q-emoji">${k.e}</span>`;
+    $("qtext").textContent=k.w;
+    $("qread").textContent=k.r?`（${k.r}）`:"";
+  }else{
+    $("img").innerHTML=`<span class="q-season s-${k.s}">${k.s}</span>`;
+    $("qtext").innerHTML=`<span class="s-${k.s}">${k.s}</span>の季語はどれ？`;
+    $("qread").textContent="";
+  }
+  const c=$("choices");c.innerHTML="";
+  q.opts.forEach((o,i)=>{
+    const b=document.createElement("button");b.className="choice";
+    b.innerHTML=o.item
+      ? `<b>${LET[i]}</b><span>${o.item.w}${o.item.r?` <span class="rd">（${o.item.r}）</span>`:""}</span>`
+      : `<b>${LET[i]}</b><span>${o.label}</span>`;
+    b.onclick=()=>answer(i);c.appendChild(b);
+  });
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function answer(i){
+  const q=qs[idx],k=q.k,o=q.opts[i];
+  [...$("choices").children].forEach((b,j)=>{b.disabled=true;
+    if(q.opts[j].ok) b.classList.add("correct"); else if(j===i) b.classList.add("wrong");});
+  if(o.ok) score++; else misses.push(k);
+  $("score").textContent=`正解 ${score}`;
+  $("img").innerHTML=`<span class="q-emoji">${k.e}</span>`;
+  let ex=`「${k.w}」は <span class="s s-${k.s}">${k.s}</span> の季語。${note(k.w)}`;
+  if(!o.ok&&o.item) ex+=`<br>えらんだ「${o.item.w}」は <span class="s s-${o.item.s}">${o.item.s}</span> の季語。${note(o.item.w)}`;
+  $("fb").innerHTML=`<div class="feedback ${o.ok?"ok":"ng"}">${o.ok?"〇 正解！":`✕ 不正解… 正解は ${LET[q.opts.findIndex(x=>x.ok)]}`}</div><div class="explain">${ex}</div>`;
+  $("next").textContent=idx===qs.length-1?"結果を見る":"次の問題へ";
+  $("next").classList.remove("hide");
+}
+$("next").onclick=()=>{idx++; if(idx<qs.length) render(); else finish();};
+
+function finish(){
+  $("bar").style.width="100%";
+  $("qcard").classList.add("hide");$("result").classList.remove("hide");
+  const pct=Math.round(score/qs.length*100);
+  $("rscore").textContent=`${score} / ${qs.length}`;
+  $("rmsg").textContent=pct===100?"全問正解！季語名人！":pct>=80?"よくできました！":"まちがえた季語を見直そう";
+  $("miss").innerHTML=misses.map(k=>`<li><b class="s-${k.s}">【${k.s}】</b> ${k.e} ${k.w}${k.r?`（${k.r}）`:""}${note(k.w)?`<span class="note">${note(k.w)}</span>`:""}</li>`).join("");
+  $("retryMiss").classList.toggle("hide",!misses.length);
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+$("retryMiss").onclick=()=>start(misses.slice());
+$("restart").onclick=()=>start(ALL);
+
+start(ALL);
+</script>
+</body>
+</html>
